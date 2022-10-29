@@ -57,7 +57,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         await Form.next()
 
         await query.message.edit_reply_markup()
-        await query.message.reply("Что вам больше всего понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Свежая еда", callback_data="opinion_fresh")).add(InlineKeyboardButton("Очень вкусно", callback_data="opinion_vkusno")).add(InlineKeyboardButton("Очень очень вкусно", callback_data="opinion_very_vkusno")).add(InlineKeyboardButton("Очень очень очень вкусно", callback_data="opinion_very_very_vkusno")))
+        await query.message.reply("Что вам больше всего понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Свежая еда", callback_data="opinion_fresh")).add(InlineKeyboardButton("вкусно", callback_data="opinion_vkusno")).add(InlineKeyboardButton("аппетитно", callback_data="opinion_appetitno")).add(InlineKeyboardButton("сытно вкусно", callback_data="opinion_very_very_vkusno")))
 
     elif query.data == "no" and query.message.text == "Нравится ли вам еда в школьной столовой?":
         async with state.proxy() as data:
@@ -79,11 +79,8 @@ async def answers_continue(query: types.CallbackQuery, state: FSMContext):
 async def get_rate(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data["rate"] = {"1️⃣": 1, "2️⃣": 2, "3️⃣": 3, "4️⃣": 4, "5️⃣": 5, "6️⃣": 6, "7️⃣": 7, "8️⃣": 8, "9️⃣": 9, "🔟": 10}[msg.text]
-
-        
     
-    await msg.answer("Спасибо за прохождения опрос, он поможет чему-то", reply_markup=ReplyKeyboardRemove())
-    await msg.answer_sticker(r"CAACAgIAAxkBAAEZdb9jXVYzRSquuZqUIEJqcgUhCvT0hAACnA8AAor0GUkTTmqe_ecp8yoE")
+    await msg.answer("Спасибо за прохождения опрос, он обязательно поможет улучшить питание в твоей школьной столовой", reply_markup=ReplyKeyboardRemove())
 
     await state.finish()
 
