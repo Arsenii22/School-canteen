@@ -1,11 +1,16 @@
 import sqlite3
+from bot import data
 
 database = sqlite3.connect("db.db")
 c = database.cursor()
+c.execute("""CREATE TABLE db (
+            School text,
+            Like integer,
+            Dislike integer,
+            Opinion text,
+            Rating real,
+            Rating_json json
+            )""")
 
-for i in ["СОШ №6", "МАОУ гимназия №1", "МАОУ гимназия №22", "МАОУ гимназия №32", "МАОУ гимназия №40", "МАОУ морской лицей", "МАОУ лицей №23", "МАОУ лицей №17", "МАОУ лицей №18", "МАОУ лицей №35", "МАОУ ШИЛИ", "Школа-детский сад №72", "СОШ №10", "СОШ №11", "СОШ №12", "СОШ №56", "СОШ №8", "CОШ №9", "СОШ №13", "СОШ №14", "CОШ №15", "СОШ №16", "СОШ №19", "СОШ №2", "СОШ №21", "СОШ №24", "СОШ №25", "СОШ №3", "СОШ №27", "СОШ №28", "СОШ №36", "СОШ №30", "СОШ №31", "СОШ №32", "СОШ №38", "СОШ №39", "СОШ №44", "СОШ №45", "СОШ №46", "СОШ №47", "СОШ №48", "СОШ №49", "СОШ №50", "СОШ №41", "СОШ №5", "СОШ №53", "СОШ №7", "СОШ №43", "Вечерняя школа №17"]:
-    c.execute(f"INSERT INTO schools(name) VALUES ('{i}')")
-    database.commit()
-
-c.execute(f"SELECT * FROM schools")
-print(c.fetchall())
+for i in range(1, 178):
+    c.execute(f"INSERT INTO db VALUES [{data.school}, {data.like}, {data.opinion}, {data.rate}]")
