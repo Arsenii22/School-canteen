@@ -80,10 +80,11 @@ async def get_rate(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data["rate"] = {"1️⃣": 1, "2️⃣": 2, "3️⃣": 3, "4️⃣": 4, "5️⃣": 5, "6️⃣": 6, "7️⃣": 7, "8️⃣": 8, "9️⃣": 9, "🔟": 10}[msg.text]
 
-        await msg.reply(str(data))
-        await msg.answer(reply_markup=ReplyKeyboardRemove())
+        
     
-    
+    await msg.answer("Спасибо за прохождения опрос, он поможет чему-то", reply_markup=ReplyKeyboardRemove())
+    await msg.answer_sticker(r"CAACAgIAAxkBAAEZdb9jXVYzRSquuZqUIEJqcgUhCvT0hAACnA8AAor0GUkTTmqe_ecp8yoE")
+
     await state.finish()
 
 
