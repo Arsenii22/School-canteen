@@ -80,12 +80,12 @@ async def get_rate(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data["rate"] = {"1️⃣": 1, "2️⃣": 2, "3️⃣": 3, "4️⃣": 4, "5️⃣": 5, "6️⃣": 6, "7️⃣": 7, "8️⃣": 8, "9️⃣": 9, "🔟": 10}[msg.text]
 
-        msg.reply(str(data))
+        await msg.reply(str(data))
+        await msg.answer(reply_markup=ReplyKeyboardRemove())
     
-    await msg.edit_reply_markup(reply_markup=ReplyKeyboardRemove())
     
     await state.finish()
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp)
