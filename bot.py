@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 import config
-import json
+import sqlite3
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
@@ -91,6 +91,19 @@ async def get_rate(msg: types.Message, state: FSMContext):
     
     await msg.answer("Спасибо за прохождения опрос, он обязательно поможет улучшить питание в твоей школьной столовой", reply_markup=ReplyKeyboardRemove())
 
+    database = sqlite3.connect("db.db")
+    c = database.cursor()
+    c.execute("""CREATE TABLE db (
+                School text,
+                Like integer,
+                Dislike integer,
+                Opinion text,
+                Rating real,
+                Rating_json json
+            )""")
+
+    for i in range(1, 178):
+        c.execute(f"INSERT INTO db VALUES [{data.school}, {data.like}, {data.opinion}, {data.rate}]")
     await state.finish()
 
 

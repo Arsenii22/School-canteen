@@ -5,9 +5,11 @@ database = sqlite3.connect("db.db")
 c = database.cursor()
 c.execute("""CREATE TABLE db (
             School text,
-            Like text,
+            Like integer,
+            Dislike integer,
             Opinion text,
-            Rating real
+            Rating real,
+            Rating_json json
             )""")
 
 for i in range(1, 178):
