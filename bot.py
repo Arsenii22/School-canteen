@@ -35,29 +35,38 @@ async def start(msg: types.Message):
         await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах")
         await msg.answer("Что вы хотите просмотреть?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Топ по школам", callback_data="moderator_top")).add(InlineKeyboardButton("Самые популярные проблемы", callback_data="moderator_top_problems")).add(InlineKeyboardButton("Таблицу с данными по школам", callback_data="moderator_schools_reviews")).add(InlineKeyboardButton("Таблицу со всеми отзывами", callback_data="moderator_all_reviews")))
     else:
-        await Form.school.set()
-
         await msg.answer_sticker(r"CAACAgIAAxkBAAEZdOdjXSEK1qpOmYrvcQoD3riSA_4zRgACXgYAAlOx9wNkYNhH9eEsgyoE")
         await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах", reply_markup=ReplyKeyboardRemove())
-        await msg.answer("Не волнуйся, это анонимно :)")
-        await msg.answer("Введите свою школу:")
-
+        
+        cur.execute(f"SELECT timestamp FROM comments WHERE user_id={msg.from_user.id} ORDER BY timestamp DESC LIMIT 1;")
+        data = cur.fetchall()
+        if data != [] and (datetime.datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=config.INTERVAL_BETWEEN_REVIEWS)) >= datetime.datetime.today():
+            await msg.answer("Здесь запрещено спамить! (До 2 отзывов в день)")
+        else:
+            await Form.school.set()
+            await msg.answer("Не волнуйся, это анонимно :)")
+            await msg.answer("Введите свою школу:")
 
 @dp.message_handler(text="Оставить отзыв")
 async def review(msg: types.Message):
-    await Form.school.set()
-
-    await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах")
-    await msg.answer("Не волнуйся, это анонимно :)")
-    await msg.answer("Введите свою школу:")
-
+    await msg.answer_sticker(r"CAACAgIAAxkBAAEZdOdjXSEK1qpOmYrvcQoD3riSA_4zRgACXgYAAlOx9wNkYNhH9eEsgyoE")
+    await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах", reply_markup=ReplyKeyboardRemove())
+    
+    cur.execute(f"SELECT timestamp FROM comments WHERE user_id={msg.from_user.id} ORDER BY timestamp DESC LIMIT 1;")
+    if datetime.datetime.strptime(cur.fetchall()[0][0], "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=config.INTERVAL_BETWEEN_REVIEWS) >= datetime.datetime.today():
+        await msg.answer("Здесь запрещено спамить! (12 часов между отзывами)", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Оставить отзыв")))
+    
+    else:
+        await Form.school.set()
+        await msg.answer("Не волнуйся, это анонимно :)")
+        await msg.answer("Введите свою школу:")
 
 @dp.callback_query_handler(lambda c: c.data.startswith("moderator_"))
 async def moderator(query: types.CallbackQuery):
     await bot.answer_callback_query(query.id)
 
     if query.data == "moderator_top":
-        cur.execute(f"SELECT school_id, AVG(rate) FROM comments GROUP BY school_id ORDER BY AVG(rate) DESC LIMIT 5;")
+        cur.execute(f"SELECT school_id, ROUND(AVG(rate), 2) FROM comments GROUP BY school_id ORDER BY AVG(rate) DESC LIMIT 5;")
         top_schools = cur.fetchall()
         text = "Топ по школам Калининград:\n"
 
@@ -81,10 +90,22 @@ async def moderator(query: types.CallbackQuery):
         table = wb.active
 
         table.append(["Школа", "Сотношение нравиться/не нравиться", "Самые популярные плюсы", "Самые популярные минусы", "Средняя оценка"])
-        cur.execute(f"SELECT school_id, AVG(like), AVG(rate) FROM comments GROUP BY school_id;")
-        
 
-        wb.save(f"table.xlsx")
+        cur.execute(f"SELECT * FROM schools")
+
+        for i in cur.fetchall():
+            cur.execute(f"SELECT ROUND(AVG(like), 2), ROUND(AVG(rate), 2) FROM comments WHERE school_id={i[0]};")
+            data = cur.fetchall()[0]
+
+            if None in data:
+                table.append([i[1], f"Нет данных", f"Нет данных", f"Нет данных", f"Нет данных"])
+            else:
+                table.append([i[1], f"{data[0] * 100}%", f".", f".", f"{data[1]}"])
+
+        wb.save(f"Таблица.xlsx")
+
+        await query.message.reply_document(document=types.InputFile("Таблица.xlsx"))
+
 
 @dp.message_handler(state=Form.school)
 async def get_school(msg: types.Message, state: FSMContext):
@@ -145,11 +166,11 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
             data["rate"] = int(query.data)
 
             cur.execute(f"SELECT ID FROM schools WHERE name='{data['school']}'")
-            cur.execute(f"INSERT INTO comments(user_id, school_id, like, opinion_good, opinion_bad, rate, timestamp) VALUES({query.from_user.id},{cur.fetchall()[0][0]}', {data['like']}, '{data['opinion_good']}', '{data['opinion_bad']}', {data['rate']}, '{datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}')")
+            cur.execute(f"INSERT INTO comments(user_id, school_id, like, opinion_good, opinion_bad, rate, timestamp) VALUES({query.from_user.id}, '{cur.fetchall()[0][0]}', {data['like']}, '{data['opinion_good']}', '{data['opinion_bad']}', {data['rate']}, '{datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}')")
             database.commit()
         
         await query.message.edit_reply_markup()
-        await query.message.reply("Спасибо за прохождение опроса, он обязательно поможет улучшить питание в твоей школьной столовой", reply_markup=ReplyKeyboardMarkup().add(KeyboardButton("Оставить отзыв")))
+        await query.message.reply("Спасибо за прохождение опроса, он обязательно поможет улучшить питание в твоей школьной столовой", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Оставить отзыв")))
 
         await state.finish()
     else:
