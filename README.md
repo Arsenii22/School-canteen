@@ -9,6 +9,7 @@
 ![alt text](https://cdn.discordapp.com/attachments/981283946065174528/1036185258535686145/bruh.webp "Logo Title text 2")
 
 Для админа по команде выводит Excel таблицу.
+
 ПОВ: админ открыл таблицу с даными всех опрошеных.
 
 ![alt text](https://media.discordapp.net/attachments/531111121936187444/1029050077420994620/SHTO.gif "Logo Title text 3")
