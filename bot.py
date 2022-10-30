@@ -7,6 +7,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from fuzzywuzzy import process
 from openpyxl import Workbook, load_workbook
+import asyncio
 import datetime
 import sqlite3
 import config
@@ -44,6 +45,7 @@ async def start(msg: types.Message):
             await msg.answer("Здесь запрещено спамить! (До 2 отзывов в день)")
         else:
             await Form.school.set()
+
             await msg.answer("Не волнуйся, это анонимно :)")
             await msg.answer("Введите свою школу:")
 
@@ -81,7 +83,7 @@ async def moderator(query: types.CallbackQuery):
         text = "Самые популярные проблемы:\n"
 
         for i in range(3):
-            text += f"{i + 1}. {top_problems[i][0]} ({top_problems[i][1]})\n"
+            text += f"{i + 1}. {config.OPINIONS[top_problems[i][0]]} ({top_problems[i][1]})\n"
         
         await query.message.reply(text)
     
@@ -106,7 +108,6 @@ async def moderator(query: types.CallbackQuery):
 
         await query.message.reply_document(document=types.InputFile("Таблица.xlsx"))
 
-
 @dp.message_handler(state=Form.school)
 async def get_school(msg: types.Message, state: FSMContext):
     cur.execute(f"SELECT name FROM schools")
@@ -116,7 +117,8 @@ async def get_school(msg: types.Message, state: FSMContext):
         await msg.reply(f"Ваша школа: {best_school[0]}?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Да", callback_data="yes")).add(InlineKeyboardButton("Нет", callback_data="no")))
     else:
         await msg.reply(f"Мы не смогли найти вашу школу, попробуйте ещё раз :(")
-
+    
+    await asyncio.sleep(10)
 
 @dp.callback_query_handler(state=Form.all_states)
 async def answers(query: types.CallbackQuery, state: FSMContext):
@@ -131,6 +133,9 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         await query.message.reply("Нравится ли вам еда в школьной столовой?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Да", callback_data="yes")).add(InlineKeyboardButton("Нет", callback_data="no")))
 
     elif query.data == "no" and query.message.text.startswith("Ваша школа:"): # КОСТЫЛЬ ПИЗДЕЦ
+        async with state.proxy() as data:
+            data["school"] = "."
+        
         await query.message.edit_reply_markup()
         await query.message.edit_text("Введите свою школу:")
 
@@ -140,7 +145,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         await Form.next()
 
         await query.message.edit_reply_markup()
-        await query.message.reply("Что вам больше всего понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Свежая еда", callback_data="opinion_fresh")).add(InlineKeyboardButton("вкусная еда", callback_data="opinion_vkusno")).add(InlineKeyboardButton("аппетитно", callback_data="opinion_appetitno")).add(InlineKeyboardButton("сытно вкусно", callback_data="opinion_very_very_vkusno")))
+        await query.message.reply("Что вам больше всего понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Вкусная еда", callback_data="opinion_tasty")).add(InlineKeyboardButton("Аппетитная еда", callback_data="opinion_appetitno")).add(InlineKeyboardButton("Свежая еда", callback_data="opinion_fresh")).add(InlineKeyboardButton("Сытная еда", callback_data="opinion_satisfying")).add(InlineKeyboardButton("Подача", callback_data="opinion_giving")).add(InlineKeyboardButton("Ничего", callback_data="opinion_nothing")))
 
     elif (query.data == "no" and query.message.text == "Нравится ли вам еда в школьной столовой?") or (query.data.startswith("opinion_") and query.message.text == "Что вам больше всего понравилось?"): # КОСТЫЛЬ ПИЗДЕЦ
         async with state.proxy() as data:
@@ -153,7 +158,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         await Form.next()
         
         await query.message.edit_reply_markup()
-        await query.message.reply("Что вам больше всего не понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("НЕ Свежая еда", callback_data="opinion_not_fresh")).add(InlineKeyboardButton("НЕ Очень вкусно", callback_data="opinion_not_vkusno")).add(InlineKeyboardButton("НЕ Очень очень вкусно", callback_data="opinion_not_very_vkusno")).add(InlineKeyboardButton("НЕ Очень очень очень вкусно", callback_data="opinion_not_very_very_vkusno")))
+        await query.message.reply("Что вам больше всего не понравилось?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Пересоленая еда", callback_data="opinion_much_salt")).add(InlineKeyboardButton("Пережаренная еда", callback_data="opinion_much_roasted")).add(InlineKeyboardButton("Переваренная еда", callback_data="opinion_much_boiled")).add(InlineKeyboardButton("Сырая еда", callback_data="opinion_raw")).add(InlineKeyboardButton("Невкусная еда", callback_data="opinion_not_tasty")).add(InlineKeyboardButton("Ничего", callback_data="opinion_nothing")))
     elif query.data.startswith("opinion_"): # КОСТЫЛЬ ПИЗДЕЦ
         async with state.proxy() as data:
             data["opinion_bad"] = query.data
