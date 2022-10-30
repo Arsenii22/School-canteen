@@ -44,8 +44,8 @@ async def start(msg: types.Message):
 async def review(msg: types.Message):
     cur.execute(f"SELECT timestamp FROM comments WHERE user_id={msg.from_user.id} ORDER BY timestamp DESC LIMIT 1;")
     data = cur.fetchall()
-    if data != [] and datetime.datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=config.INTERVAL_BETWEEN_REVIEWS) >= datetime.datetime.today():
-        await msg.answer("Писать отзывы можно только с периодичностью в 12 часов")
+    if data != [] and datetime.datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S") + datetime.timedelta(minutes=config.INTERVAL_BETWEEN_REVIEWS) >= datetime.datetime.utcnow():
+        await msg.answer("Писать отзывы можно только с периодичностью в 2 минуты")
     
     else:
         await Form.school.set()
