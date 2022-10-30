@@ -7,6 +7,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from fuzzywuzzy import process
 from openpyxl import Workbook, load_workbook
+import matplotlib.pyplot as plt
 import asyncio
 import datetime
 import sqlite3
@@ -68,14 +69,27 @@ async def moderator(query: types.CallbackQuery):
     await bot.answer_callback_query(query.id)
 
     if query.data == "moderator_top":
-        cur.execute(f"SELECT school_id, ROUND(AVG(rate), 2) FROM comments GROUP BY school_id ORDER BY AVG(rate) DESC LIMIT 5;")
+        fig, ax = plt.subplots()
+        vals, labels = [], []
+
+        cur.execute(f"SELECT school_id, ROUND(AVG(rate), 2) FROM comments GROUP BY school_id ORDER BY AVG(rate) DESC")
         top_schools = cur.fetchall()
         text = "Топ по школам Калининград:\n"
 
         for i in range(5):
             text += f"{i + 1}. {await get_school_name_by_id(top_schools[i][0])} ({top_schools[i][1]})\n"
         
+        for i in top_schools:
+            labels.append(await get_school_name_by_id(i[0]))
+            vals.append(i[1])
+        
+        ax.pie(vals, labels=labels)
+        ax.axis("equal")
+
+        plt.savefig("plt.png")
+        
         await query.message.reply(text)
+        await query.message.reply_photo(types.input_file.InputFile("plt.png"))
 
     elif query.data == "moderator_top_problems":
         cur.execute(f"SELECT opinion_bad, COUNT(opinion_bad) FROM comments GROUP BY opinion_bad ORDER BY COUNT(opinion_bad) DESC LIMIT 5;")
@@ -103,6 +117,21 @@ async def moderator(query: types.CallbackQuery):
                 table.append([i[1], f"Нет данных", f"Нет данных", f"Нет данных", f"Нет данных"])
             else:
                 table.append([i[1], f"{data[0] * 100}%", f".", f".", f"{data[1]}"])
+
+        wb.save(f"Таблица.xlsx")
+
+        await query.message.reply_document(document=types.InputFile("Таблица.xlsx"))
+    
+    elif query.data == "moderator_all_reviews":
+        wb = Workbook()
+        table = wb.active
+
+        table.append(["Школа", "Нравиться/не нравиться", "Плюсы", "Минусы", "Оценка", "Метка времени"])
+
+        cur.execute(f"SELECT school_id, like, opinion_good, opinion_bad, rate, timestamp FROM comments")
+
+        for i in cur.fetchall():
+            table.append([await get_school_name_by_id(i[0]), bool(i[1]), config.OPINIONS[i[2]], config.OPINIONS[i[3]], i[4], i[5]])
 
         wb.save(f"Таблица.xlsx")
 
