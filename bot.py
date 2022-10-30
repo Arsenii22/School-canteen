@@ -1,10 +1,12 @@
 import logging
+from re import I
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from fuzzywuzzy import process
+from openpyxl import Workbook, load_workbook
 import datetime
 import sqlite3
 import config
@@ -13,8 +15,6 @@ database = sqlite3.connect("db.db")
 cur = database.cursor()
 
 bot = Bot(token=config.TOKEN)
-dp = Dispatcher(bot)
-
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
@@ -25,6 +25,9 @@ class Form(StatesGroup):
     opinion_bad = State()
     rate = State() # Оценка по 10 балльной шкале
 
+async def get_school_name_by_id(school_id: int):
+    cur.execute(f"SELECT name FROM schools WHERE ID={school_id}")
+    return cur.fetchall()[0][0]
     
 @dp.message_handler(commands="start")
 async def start(msg: types.Message):
@@ -35,13 +38,53 @@ async def start(msg: types.Message):
         await Form.school.set()
 
         await msg.answer_sticker(r"CAACAgIAAxkBAAEZdOdjXSEK1qpOmYrvcQoD3riSA_4zRgACXgYAAlOx9wNkYNhH9eEsgyoE")
-        await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах")
+        await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах", reply_markup=ReplyKeyboardRemove())
         await msg.answer("Не волнуйся, это анонимно :)")
         await msg.answer("Введите свою школу:")
 
-@dp.callback_query_handler(lambda c: c.startswith("moderator_"))
+
+@dp.message_handler(text="Оставить отзыв")
+async def review(msg: types.Message):
+    await Form.school.set()
+
+    await msg.answer("Приветствуем вас в ультра-мега-супер-пупер-боте для отзывов на различные столовые в школах")
+    await msg.answer("Не волнуйся, это анонимно :)")
+    await msg.answer("Введите свою школу:")
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("moderator_"))
 async def moderator(query: types.CallbackQuery):
-    pass
+    await bot.answer_callback_query(query.id)
+
+    if query.data == "moderator_top":
+        cur.execute(f"SELECT school_id, AVG(rate) FROM comments GROUP BY school_id ORDER BY AVG(rate) DESC LIMIT 5;")
+        top_schools = cur.fetchall()
+        text = "Топ по школам Калининград:\n"
+
+        for i in range(5):
+            text += f"{i + 1}. {await get_school_name_by_id(top_schools[i][0])} ({top_schools[i][1]})\n"
+        
+        await query.message.reply(text)
+
+    elif query.data == "moderator_top_problems":
+        cur.execute(f"SELECT opinion_bad, COUNT(opinion_bad) FROM comments GROUP BY opinion_bad ORDER BY COUNT(opinion_bad) DESC LIMIT 5;")
+        top_problems = cur.fetchall()
+        text = "Самые популярные проблемы:\n"
+
+        for i in range(3):
+            text += f"{i + 1}. {top_problems[i][0]} ({top_problems[i][1]})\n"
+        
+        await query.message.reply(text)
+    
+    elif query.data == "moderator_schools_reviews":
+        wb = Workbook()
+        table = wb.active
+
+        table.append(["Школа", "Сотношение нравиться/не нравиться", "Самые популярные плюсы", "Самые популярные минусы", "Средняя оценка"])
+        cur.execute(f"SELECT school_id, AVG(like), AVG(rate) FROM comments GROUP BY school_id;")
+        
+
+        wb.save(f"table.xlsx")
 
 @dp.message_handler(state=Form.school)
 async def get_school(msg: types.Message, state: FSMContext):
@@ -52,6 +95,7 @@ async def get_school(msg: types.Message, state: FSMContext):
         await msg.reply(f"Ваша школа: {best_school[0]}?", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("Да", callback_data="yes")).add(InlineKeyboardButton("Нет", callback_data="no")))
     else:
         await msg.reply(f"Мы не смогли найти вашу школу, попробуйте ещё раз :(")
+
 
 @dp.callback_query_handler(state=Form.all_states)
 async def answers(query: types.CallbackQuery, state: FSMContext):
@@ -101,17 +145,18 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
             data["rate"] = int(query.data)
 
             cur.execute(f"SELECT ID FROM schools WHERE name='{data['school']}'")
-            cur.execute(f"INSERT INTO comments(school_id, like, opinion_good, opinion_bad, rate, timestamp) VALUES('{cur.fetchall()[0][0]}', {data['like']}, '{data['opinion_good']}', '{data['opinion_bad']}', {data['rate']}, '{datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}')")
+            cur.execute(f"INSERT INTO comments(user_id, school_id, like, opinion_good, opinion_bad, rate, timestamp) VALUES({query.from_user.id},{cur.fetchall()[0][0]}', {data['like']}, '{data['opinion_good']}', '{data['opinion_bad']}', {data['rate']}, '{datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}')")
             database.commit()
         
         await query.message.edit_reply_markup()
-        await query.message.reply("Спасибо за прохождение опроса, он обязательно поможет улучшить питание в твоей школьной столовой")
+        await query.message.reply("Спасибо за прохождение опроса, он обязательно поможет улучшить питание в твоей школьной столовой", reply_markup=ReplyKeyboardMarkup().add(KeyboardButton("Оставить отзыв")))
 
         await state.finish()
     else:
         await state.finish()
 
         await query.message.reply("Извините, что-то пошло не так, попробуйте перезапустить бота")
+
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
