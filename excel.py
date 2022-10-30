@@ -8,3 +8,4 @@ for i in massive:
     b.append(i)
 
 a.save()
+txt = "Я лох"
