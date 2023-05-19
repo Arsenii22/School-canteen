@@ -176,7 +176,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         await query.message.edit_reply_markup()
         await query.message.edit_text("Введите свою школу:")
 
-    elif query.data == "yes" and query.message.text == "Нравится ли вам еда в школьной столовой?": # КОСТЫЛЬ ПИЗДЕЦ
+    elif query.data == "yes" and query.message.text == "Нравится ли вам еда в школьной столовой?":
         async with state.proxy() as data:
             data["like"] = True
         await Form.next()
@@ -203,7 +203,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
 
         await query.message.edit_reply_markup()
         await query.message.reply("Оцените качество еды по 10 балльной шкале", reply_markup=InlineKeyboardMarkup().row(InlineKeyboardButton("1️⃣", callback_data="1"), InlineKeyboardButton("2️⃣", callback_data="2")).row(InlineKeyboardButton("3️⃣", callback_data="3"), InlineKeyboardButton("4️⃣", callback_data="4")).row(InlineKeyboardButton("5️⃣", callback_data="5"), InlineKeyboardButton("6️⃣", callback_data="6")).row(InlineKeyboardButton("7️⃣", callback_data="7"), InlineKeyboardButton("8️⃣", callback_data="8")).row(InlineKeyboardButton("9️⃣", callback_data="9"), InlineKeyboardButton("🔟", callback_data="10")))
-    elif query.data in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]: # ... у меня нет слов
+    elif query.data in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
         async with state.proxy() as data:
             data["rate"] = int(query.data)
 
@@ -213,6 +213,7 @@ async def answers(query: types.CallbackQuery, state: FSMContext):
         
         await query.message.edit_reply_markup()
         await query.message.reply("Спасибо за прохождение опроса, он обязательно поможет улучшить питание в вашей школьной столовой", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("Пройти опрос")))
+        await query.message.answer_sticker(r"CAACAgIAAxkBAAEZe8xjXpZHL_vPn2jfwA2NZ1faeAO7RAACfAYAAlOx9wME3eJkw2uVWCoE")
 
         await state.finish()
     else:
